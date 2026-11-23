@@ -1,0 +1,62 @@
+# SELMAG - E-commerce de tableros y materiales eléctricos
+# Arquitectura de 3 capas en contenedores Docker:
+#   frontend (Nginx + Angular)  ->  backend (Node.js + Express)  ->  db (PostgreSQL)
+# Solo el frontend publica un puerto hacia Internet (80).
+# El backend y la base de datos quedan en la red interna "selmag-net".
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: selmag-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Lima
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - selmag-net
+
+  backend:
+    build: ./backend
+    container_name: selmag-api
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Lima
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - selmag-net
+
+  frontend:
+    build: ./frontend
+    container_name: selmag-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - selmag-net
+
+volumes:
+  pgdata:
+
+networks:
+  selmag-net:
+    driver: bridge

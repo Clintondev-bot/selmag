@@ -1,0 +1,15 @@
+# ETAPA 3 - Conexión remota desde tu PC hacia vm-selmag
+# Copia este bloque en el archivo de configuración SSH de tu PC:
+#   Windows: C:\Users\<tu-usuario>\.ssh\config
+#   Linux/Mac: ~/.ssh/config
+# y reemplaza la IP. Luego, en VS Code: extensión "Remote - SSH" >
+# "Connect to Host..." > vm-selmag
+
+Host vm-selmag
+    HostName <IP_PUBLICA_DE_VM_SELMAG>
+    User azureuser
+    IdentityFile ~/.ssh/id_rsa
+
+# Acceso a la base de datos (sin abrir el puerto 5432 en Azure):
+#   ssh vm-selmag
+#   docker exec -it selmag-db psql -U selmag_app -d selmag

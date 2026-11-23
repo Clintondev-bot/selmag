@@ -1,0 +1,58 @@
+// Diagrama de distribución (despliegue) UML - SELMAG
+// Generar: dot -Tsvg diagrama-despliegue.dot -o diagrama-despliegue.svg
+digraph despliegue {
+  compound=true;
+  graph [rankdir=LR, fontname="Helvetica", fontsize=12, nodesep=0.5, ranksep=0.9, pad=0.3, bgcolor="white",
+         label=<<B>SELMAG · Diagrama de distribución UML</B>>, labelloc=t, fontcolor="#12294d"];
+  node  [shape=box3d, style=filled, fillcolor="#ffffff", color="#12294d", fontname="Helvetica", fontsize=11, margin="0.18,0.1"];
+  edge  [fontname="Helvetica", fontsize=10, color="#12294d", fontcolor="#12294d", arrowhead=vee];
+
+  cliente [fillcolor="#fff7d6", label=<
+    <FONT POINT-SIZE="9">«device»</FONT><BR/><B>Cliente</B><BR/>
+    <FONT POINT-SIZE="10">PC / laptop / smartphone<BR/>Navegador web (Chrome, Edge)</FONT>>];
+
+  pcdev [fillcolor="#fff7d6", label=<
+    <FONT POINT-SIZE="9">«device»</FONT><BR/><B>PC de desarrollo</B><BR/>
+    <FONT POINT-SIZE="10">Windows 11<BR/>VS Code + Remote-SSH<BR/>Git · Node.js 20 · Angular CLI</FONT>>];
+
+  github [fillcolor="#eef1f6", label=<
+    <FONT POINT-SIZE="9">«cloud service»</FONT><BR/><B>GitHub</B><BR/>
+    <FONT POINT-SIZE="10">Repositorio: selmag<BR/>código + archivos de configuración</FONT>>];
+
+  subgraph cluster_azure {
+    label=<<FONT POINT-SIZE="9">«cloud»</FONT><BR/><B>Microsoft Azure</B> · Región East US · Grupo de recursos rg-selmag>;
+    style="rounded,dashed"; color="#3a6fb0"; fontcolor="#12294d";
+
+    subgraph cluster_vm {
+      label=<<FONT POINT-SIZE="9">«device»</FONT><BR/><B>vm-selmag</B> (máquina virtual)<BR/>
+<FONT POINT-SIZE="10">Standard_B2s · 2 vCPU · 4 GiB RAM · Disco SSD 30 GiB<BR/>
+Ubuntu Server 22.04 LTS · IP pública estática: &lt;IP_PUBLICA&gt;<BR/>
+NSG: entrada 22/TCP (SSH) y 80/TCP (HTTP)</FONT>>;
+      style="filled"; fillcolor="#eaf1fb"; color="#12294d"; penwidth=1.5;
+
+      subgraph cluster_docker {
+        label=<<FONT POINT-SIZE="9">«execution environment»</FONT><BR/><B>Docker Engine + Docker Compose</B><BR/><FONT POINT-SIZE="10">red interna: selmag-net</FONT>>;
+        style="filled"; fillcolor="#ffffff"; color="#7a8aa3";
+
+        web [fillcolor="#fde9a8", label=<
+          <FONT POINT-SIZE="9">«container» capa de presentación</FONT><BR/><B>selmag-web</B><BR/>
+          <FONT POINT-SIZE="10">Nginx 1.27 · puerto 80<BR/>«artifact» Angular 18 (dist)<BR/>«artifact» nginx.conf</FONT>>];
+
+        api [fillcolor="#fde9a8", label=<
+          <FONT POINT-SIZE="9">«container» capa de negocio</FONT><BR/><B>selmag-api</B><BR/>
+          <FONT POINT-SIZE="10">Node.js 20 + Express · puerto 3000<BR/>«artifact» server.js (API REST)</FONT>>];
+
+        db [fillcolor="#fde9a8", label=<
+          <FONT POINT-SIZE="9">«container» capa de datos</FONT><BR/><B>selmag-db</B><BR/>
+          <FONT POINT-SIZE="10">PostgreSQL 16 · puerto 5432<BR/>«artifact» init.sql<BR/>volumen: pgdata</FONT>>];
+      }
+    }
+  }
+
+  cliente -> web [label="HTTP :80"];
+  web -> api     [label="HTTP/REST :3000\n/api/*"];
+  api -> db      [label="TCP/IP :5432\n(driver pg)"];
+  pcdev -> github [label="HTTPS\ngit push"];
+  pcdev -> web   [label="SSH :22\n(administración)", style=dashed, lhead=cluster_vm];
+  github -> api  [label="HTTPS\ngit clone / pull", style=dashed, lhead=cluster_vm];
+}

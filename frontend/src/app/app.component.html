@@ -1,0 +1,80 @@
+<div class="topbar">
+  Envíos a todo el Perú · Recojo gratis en tienda · Envío gratis en Lima por compras desde S/ 500
+</div>
+
+<header class="header">
+  <div class="logo">
+    <span class="logo-icon">⚡</span>
+    <div>
+      <strong>SELMAG</strong>
+      <small>Tableros y materiales eléctricos</small>
+    </div>
+  </div>
+  <form class="search" (submit)="$event.preventDefault(); buscar(q.value)">
+    <input #q type="search" placeholder="Buscar productos, marcas o código SKU" />
+    <button type="submit">Buscar</button>
+  </form>
+  <div class="status" [class.ok]="health?.db === 'ok'" [class.bad]="health && health.db !== 'ok'">
+    @if (!health) { Comprobando servidor… }
+    @else if (health.db === 'ok') { ● API y base de datos conectadas }
+    @else { ● Sin conexión a la base de datos }
+  </div>
+</header>
+
+<main class="container">
+  <section>
+    <h2>Compra por categoría</h2>
+    <div class="cats">
+      @for (c of categorias; track c.id) {
+        <button class="cat" [class.active]="categoriaActiva === c.slug" (click)="filtrar(c.slug)">
+          <strong>{{ c.nombre }}</strong>
+          <span>{{ c.productos }} productos</span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2>
+      @if (busqueda) { Resultados para “{{ busqueda }}” }
+      @else { Los más vendidos }
+    </h2>
+
+    @if (cargando) {
+      <p class="muted">Cargando productos…</p>
+    } @else if (error) {
+      <p class="error">{{ error }}</p>
+    } @else if (productos.length === 0) {
+      <p class="muted">No se encontraron productos.</p>
+    } @else {
+      <div class="grid">
+        @for (p of productos; track p.id) {
+          <article class="card">
+            <div class="badges">
+              @if (p.mas_vendido) { <span class="badge dark">Más vendido</span> }
+              @if (descuento(p) > 0) { <span class="badge yellow">-{{ descuento(p) }}%</span> }
+            </div>
+            <div class="thumb">⚡</div>
+            <small class="meta">{{ p.marca }} · SKU {{ p.sku }}</small>
+            <h3>{{ p.nombre }}</h3>
+            @if (p.stock > 0) {
+              <span class="stock">● +{{ p.stock }} en stock</span>
+            } @else {
+              <span class="stock pedido">● A pedido · {{ p.a_pedido_dias }} días hábiles</span>
+            }
+            <div class="price">
+              S/ {{ p.precio | number: '1.2-2' }}
+              @if (p.precio_anterior) { <s>S/ {{ p.precio_anterior | number: '1.2-2' }}</s> }
+              <small>inc. IGV</small>
+            </div>
+            <button class="add">Agregar al carrito</button>
+          </article>
+        }
+      </div>
+    }
+  </section>
+</main>
+
+<footer class="footer">
+  © 2026 SELMAG · Prueba de concepto desplegada en Azure (Angular + Node.js + PostgreSQL en Docker)
+</footer>

@@ -1,0 +1,10 @@
+# Complemento de docker-compose.yml: usar las imágenes publicadas en
+# Azure Container Registry en lugar de construirlas en la VM.
+# Requiere ACR_LOGIN_SERVER en el archivo .env (ej. selmagacr.azurecr.io)
+# Uso: bash infra/06-desplegar-desde-acr.sh
+
+services:
+  backend:
+    image: ${ACR_LOGIN_SERVER}/selmag-backend:${TAG:-latest}
+  frontend:
+    image: ${ACR_LOGIN_SERVER}/selmag-frontend:${TAG:-latest}

@@ -11,7 +11,7 @@ Proyecto del curso **Desarrollo y Soporte de Aplicaciones Multiplataforma** (CER
 | Negocio | Node.js 20 + Express 4 (API REST) | `selmag-api` | 3000 (red interna) |
 | Datos | PostgreSQL 16 | `selmag-db` | 5432 (red interna) |
 
-Servidor: **vm-selmag**, máquina virtual de Azure con Ubuntu Server 22.04 LTS, Standard_B2s (2 vCPU, 4 GiB de RAM) y un disco de 30 GiB.
+Servidor: **vm-selmag**, máquina virtual de Azure con Ubuntu Server 24.04 LTS, Standard_D2alds_v7 (2 vCPU, 4 GiB de RAM), disco de 30 GiB, región East US e IP pública 52.152.141.180.
 
 ![Diagrama de despliegue](docs/diagrama-despliegue.png)
 
@@ -63,4 +63,23 @@ docker compose ps                 # estado de los contenedores
 docker compose logs -f backend    # logs de la API
 docker exec -it selmag-db psql -U selmag_app -d selmag   # consola SQL
 docker compose down               # detener (los datos quedan en el volumen)
+```
+
+## Despliegue alternativo en Kubernetes (k3s)
+
+La carpeta `k8s/` tiene los manifiestos para desplegar las mismas 3 capas en Kubernetes:
+
+| Archivo | Recursos |
+|---|---|
+| `k8s/00-namespace.yaml` | Namespace `selmag` |
+| `k8s/10-postgres.yaml` | PersistentVolumeClaim `pgdata`, Deployment `db` (1 réplica), Service `db` (ClusterIP) |
+| `k8s/20-backend.yaml` | Deployment `backend` (2 réplicas, probes en `/api/health`), Service `backend` (ClusterIP) |
+| `k8s/30-frontend.yaml` | Deployment `frontend` (2 réplicas), Service `frontend` (LoadBalancer, puerto 80) |
+
+La contraseña va en un **Secret** y el `init.sql` en un **ConfigMap**; los crea el script, no se suben a GitHub.
+
+```bash
+bash infra/04-kubernetes.sh        # instala k3s y despliega en Kubernetes
+kubectl -n selmag get pods,svc      # ver el estado
+bash infra/05-volver-a-compose.sh  # volver a Docker Compose
 ```

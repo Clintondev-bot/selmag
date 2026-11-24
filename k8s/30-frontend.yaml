@@ -1,0 +1,41 @@
+# ===== Capa de presentación: Nginx + Angular =====
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: selmag
+  labels: { app: frontend, capa: presentacion }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend, capa: presentacion }
+    spec:
+      containers:
+        - name: web
+          image: selmag-frontend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+---
+# Service público: expone la tienda en el puerto 80 de la VM
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: selmag
+spec:
+  type: LoadBalancer              # en k3s lo atiende ServiceLB en el puerto 80 del nodo
+  selector: { app: frontend }
+  ports:
+    - port: 80
+      targetPort: 80

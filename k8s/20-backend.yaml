@@ -1,0 +1,58 @@
+# ===== Capa de negocio: API Node.js + Express =====
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: selmag
+  labels: { app: backend, capa: negocio }
+spec:
+  replicas: 2                     # 2 copias de la API: si una falla, la otra responde
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend, capa: negocio }
+    spec:
+      containers:
+        - name: api
+          image: selmag-backend:latest      # imagen construida con "docker compose build"
+          imagePullPolicy: Never            # usar la imagen local, no descargarla
+          ports:
+            - containerPort: 3000
+          env:
+            - { name: PORT,   value: "3000" }
+            - { name: PGHOST, value: "db" }
+            - { name: PGPORT, value: "5432" }
+            - { name: TZ,     value: "America/Lima" }
+            - name: PGDATABASE
+              valueFrom: { secretKeyRef: { name: selmag-db, key: POSTGRES_DB } }
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: selmag-db, key: POSTGRES_USER } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: selmag-db, key: POSTGRES_PASSWORD } }
+          # Kubernetes solo envía tráfico al pod cuando /api/health responde 200
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # Si la API deja de responder, Kubernetes reinicia el pod solo
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits:   { memory: 256Mi }
+---
+# Service interno: Nginx se conecta a "backend:3000" (igual que en Docker Compose)
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: selmag
+spec:
+  type: ClusterIP
+  selector: { app: backend }      # reparte las peticiones entre las 2 réplicas
+  ports:
+    - port: 3000
+      targetPort: 3000

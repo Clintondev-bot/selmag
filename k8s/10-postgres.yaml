@@ -1,0 +1,79 @@
+# ===== Capa de datos: PostgreSQL =====
+# Requiere (los crea infra/04-kubernetes.sh, no se suben a GitHub):
+#   Secret    selmag-db      -> POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+#   ConfigMap selmag-initdb  -> 01-init.sql
+
+# Disco persistente: los datos sobreviven aunque el pod se reinicie
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgdata
+  namespace: selmag
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: selmag
+  labels: { app: db, capa: datos }
+spec:
+  replicas: 1                     # una sola instancia: la base no se replica así
+  strategy:
+    type: Recreate                # el disco solo puede usarlo un pod a la vez
+  selector:
+    matchLabels: { app: db }
+  template:
+    metadata:
+      labels: { app: db, capa: datos }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: selmag-db
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: TZ
+              value: America/Lima
+          volumeMounts:
+            - name: datos
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { memory: 512Mi }
+      volumes:
+        - name: datos
+          persistentVolumeClaim:
+            claimName: pgdata
+        - name: initdb
+          configMap:
+            name: selmag-initdb
+---
+# Service interno: la API se conecta a "db:5432" (igual que en Docker Compose)
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: selmag
+spec:
+  type: ClusterIP                 # solo accesible dentro del clúster
+  selector: { app: db }
+  ports:
+    - port: 5432
+      targetPort: 5432
